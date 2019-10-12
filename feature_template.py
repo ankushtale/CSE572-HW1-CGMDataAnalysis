@@ -4,7 +4,7 @@ import pandas
 import matplotlib.pyplot as plt
 import numpy as np
 from scipy.stats import norm
-from scipy.fftpack import fft
+
 
 numFiles = 5
 cgm_values = [pd.read_csv('dm_proj1_data/CGMSeriesLunchPat{}.csv'.format(i)) for i in range(1, numFiles + 1)]
@@ -23,8 +23,10 @@ def epochToDate(cgmT):
 for i in range(numFiles):
     epochToDate(cgm_timestamps[i])
 
+
 for i in range(numFiles):
     cgm_timestamps[i], cgm_values[i] = cgm_timestamps[i].T, cgm_values[i].T
+
 
 for i in range(numFiles):
     cgm_timestamps[i] = cgm_timestamps[i].set_index([pandas.Index(['cgm_{}'.format(i) for i in range(1, len(cgm_timestamps[i]) + 1)])])
@@ -60,49 +62,21 @@ for j in range(numFiles):
         cgm_merged[j][i] = cgm_merged[j][i].values[::-1]
 
 
-def addOutofRange(cgmMO):
-    num = 2
-    for i in range(len(cgmMO.columns) // 2):
-        cgmMO.insert(num, '{}_out_of_range'.format(i), [70 - j if j < 70 else j - 180 if j > 180 else 0 for j in cgmMO['{}_y'.format(i)]], True)
-        num += 3
+def MeanRange(CGMM):
+    rangeList = []
+    finalList = []
+    for i in range(len(CGMM)):
+        x, y = str(i) + "_x", str(i) + "_y"
+        maxValue = CGMM[y].max()
+        minValue = CGMM[y].min()
+        rangeList.append(maxValue - minValue)
+
+    averageList = sum(rangeList) / len(rangeList)
+    for i in range(len(rangeList)):
+        finalList.append(rangeList[i] - averageList)
+    return finalList
 
 
-def delOutOfRange(cgmMO):
-    out = []
-    for i in range(len(cgmMO.columns) // 3):
-        out.append(round(sum(cgmMO['{}_out_of_range'.format(i)]) / len(cgmMO['{}_out_of_range'.format(i)]), 2))
-        del cgmMO['{}_out_of_range'.format(i)]
-    return out
-
-
+meanRangeList = []
 for i in range(numFiles):
-    addOutofRange(cgm_merged[i])
-
-
-def countOutOfRange(cgmMO):
-    posCount, negCount = 0, 0
-    outOfRange = []
-    for i in range(len(cgmMO.columns) // 3):
-        for j in cgmMO['{}_out_of_range'.format(i)]:
-            if j > 0:
-                posCount += 1
-            if j < 0:
-                negCount += 1
-    #     outOfRange.append([posCount,negCount])
-        outOfRange.append(posCount)
-        posCount, negCount = 0, 0
-    return outOfRange
-
-
-outOfRangeList = []
-for i in range(numFiles):
-    outOfRangeList.append([countOutOfRange(cgm_merged[i]), delOutOfRange(cgm_merged[i])])
-
-
-timeRange = [
-    [
-        '{1} - {0}'.format(cgm_merged[idx]['{}_x'.format(i)][0], cgm_merged[idx]['{}_x'.format(i)][-1]) for i in range(len(cgm_merged[idx].columns) // 2)
-    ] for idx in range(numFiles)
-]
-
-feature_matrix = [pd.DataFrame({'timeRange': timeRange[i], '#OutOfRange': outOfRangeList[i][0], 'meanOutOfRange':outOfRangeList[i][1]}) for i in range(numFiles)]
+    meanRangeList.append(MeanRange(cgm_merged[i]))
